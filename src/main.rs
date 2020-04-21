@@ -2,8 +2,11 @@
 
 use structopt::StructOpt;
 use rocket::{post, routes};
+use rocket_contrib::json::Json;
 
+use std::path::PathBuf;
 use std::env;
+use std::process::Command;
 
 #[derive(Debug, StructOpt)]
 struct Cla {
@@ -12,9 +15,13 @@ struct Cla {
 	port: u16,
 }
 
+
 #[post("/")]
-fn base() -> String {
-	"received connection".into()
+fn base() {
+	Command::new("git")
+		.arg("pull")
+		.spawn()
+		.unwrap()
 }
 
 fn main() {
