@@ -1,35 +1,42 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
-use structopt::StructOpt;
+use anyhow::Result;
+use lazy_static::lazy_static;
 use rocket::{post, routes};
-use rocket_contrib::json::Json;
+use structopt::StructOpt;
 
-use std::path::PathBuf;
 use std::env;
-use std::process::Command;
+use std::path::PathBuf;
+use std::process::{Command, ExitStatus};
 
 #[derive(Debug, StructOpt)]
 struct Cla {
 	/// port
-	#[structopt(short, long, default_value="8888")]
+	#[structopt(short, long, default_value = "8888")]
 	port: u16,
+	/// script
+	#[structopt(parse(from_os_str))]
+	script: PathBuf,
 }
 
-
 #[post("/")]
-fn base() {
-	Command::new("git")
-		.arg("pull")
-		.spawn()
-		.unwrap()
+fn base() -> Result<String> {
+	let c = Command::new(
+		[&PathBuf::from("./"), &OPT.script]
+			.iter()
+			.collect::<PathBuf>(),
+	)
+	.spawn()?
+	.wait()?;
+	Ok(format!("{:?}", c))
+}
+
+lazy_static! {
+	static ref OPT: Cla = Cla::from_args();
 }
 
 fn main() {
-	let argv = Cla::from_args();
+	env::set_var("ROCKET_PORT", format!("{}", OPT.port));
 
-	env::set_var("ROCKET_PORT", format!("{}", argv.port));
-
-	rocket::ignite()
-		.mount("/", routes![base])
-		.launch();
+	rocket::ignite().mount("/", routes![base]).launch();
 }
